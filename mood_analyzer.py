@@ -19,6 +19,8 @@ from dataset import POSITIVE_WORDS, NEGATIVE_WORDS
 NEGATION_WORDS = {
     "not", "never", "don't", "doesn't", "didn't", "isn't", "wasn't",
     "aren't", "can't", "won't", "ain't",
+    # Same words typed without the apostrophe, as is common in texting.
+    "dont", "doesnt", "didnt", "isnt", "wasnt", "arent", "cant", "wont", "aint",
 }
 
 # Invisible character that some emojis carry (e.g. "❤️" = "❤" + this).

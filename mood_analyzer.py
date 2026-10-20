@@ -9,9 +9,20 @@ This class starts with very simple logic:
   - Convert that score into a mood label
 """
 
+import re
 from typing import List, Dict, Tuple, Optional
 
 from dataset import POSITIVE_WORDS, NEGATIVE_WORDS
+
+# Words that flip the meaning of the word right after them.
+# "no" is left out on purpose so slang like "no cap" isn't treated as negation.
+NEGATION_WORDS = {
+    "not", "never", "don't", "doesn't", "didn't", "isn't", "wasn't",
+    "aren't", "can't", "won't", "ain't",
+}
+
+# Invisible character that some emojis carry (e.g. "❤️" = "❤" + this).
+EMOJI_VARIATION_SELECTOR = chr(0xFE0F)
 
 
 class MoodAnalyzer:
@@ -53,7 +64,14 @@ class MoodAnalyzer:
           - Normalize repeated characters ("soooo" -> "soo")
         """
         cleaned = text.strip().lower()
-        tokens = cleaned.split()
+
+        # Collapse 3+ repeated characters down to 2 ("soooo" -> "soo").
+        cleaned = re.sub(r"(.)\1{2,}", r"\1\1", cleaned)
+
+        # Keep emoticons (":)", ":-("), words (with apostrophes, like "can't"),
+        # and individual emoji characters. Plain punctuation is dropped.
+        tokens = re.findall(r"[:;]-?[()dp]|[a-z0-9']+|[^\x00-\x7f]", cleaned)
+        tokens = [t for t in tokens if t != EMOJI_VARIATION_SELECTOR]
 
         return tokens
 
@@ -83,7 +101,25 @@ class MoodAnalyzer:
         #
         # Hint: if you implement negation, you may want to look at pairs of tokens,
         # like ("not", "happy") or ("never", "fun").
-        pass
+        tokens = self.preprocess(text)
+        score = 0
+
+        for i, token in enumerate(tokens):
+            if token in self.positive_words:
+                value = 1
+            elif token in self.negative_words:
+                value = -1
+            else:
+                continue
+
+            # Negation: flip the word's value if the previous token negates it
+            # ("not happy" -> -1, "not bad" -> +1).
+            if i > 0 and tokens[i - 1] in NEGATION_WORDS:
+                value = -value
+
+            score += value
+
+        return score
 
     # ---------------------------------------------------------------------
     # Label prediction
@@ -110,7 +146,13 @@ class MoodAnalyzer:
         #   2. Return "positive" if the score is above 0.
         #   3. Return "negative" if the score is below 0.
         #   4. Return "neutral" otherwise.
-        pass
+        score = self.score_text(text)
+
+        if score > 0:
+            return "positive"
+        if score < 0:
+            return "negative"
+        return "neutral"
 
     # ---------------------------------------------------------------------
     # Explanations (optional but recommended)
